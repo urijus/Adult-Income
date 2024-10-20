@@ -154,7 +154,7 @@ class BaseProcessor():
     def preprocess(
         self, dropna=True, target_column=None, encode_target=True, encode_type='LabelEncoder',
         test_size=0.3, random_state=42, num_scaler='MinMaxScaler', cat_encoder='TargetEncoder',
-        cardinality_threshold=20, encode_cat = False, scale_num = True
+        cardinality_threshold=20, encode_cat = False, scale_num = False
     ):
         """
         Full data preprocessing pipeline:
@@ -211,7 +211,6 @@ class CSVProcessor(BaseProcessor):
         self.df = pd.read_csv(self.file_path, **kwargs)
         self.len_original_df = len(self.df)
         print(f'Loaded a CSV file with {self.len_original_df} rows.')
-
 
 
 class ExcelProcessor(BaseProcessor):
