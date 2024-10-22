@@ -173,7 +173,7 @@ class FeatureTransformer:
                     self.encoders[feature] = onehot_encoder
 
                 # Append the transformed DataFrame to the list
-                transformed_features.append(X_train_encoded.reset_index())
+                transformed_features.append(X_train_encoded.reset_index(drop=True))
 
             # Concatenate all transformed categorical features
             X_train_transformed_cat = pd.concat(transformed_features, axis=1).reset_index(drop=True)
@@ -224,7 +224,7 @@ class FeatureTransformer:
                     # Target Encoding for high-cardinality features
                     X_test_encoded = encoder.transform(self.X_test[[feature]])
 
-                transformed_features.append(X_test_encoded.reset_index())
+                transformed_features.append(X_test_encoded.reset_index(drop=True))
 
             X_test_transformed_cat = pd.concat(transformed_features, axis=1).reset_index(drop=True)
 
