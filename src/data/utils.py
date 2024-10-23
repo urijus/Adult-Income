@@ -151,6 +151,8 @@ class FeatureTransformer:
             The transformed training data with both numerical and categorical features.
         """
         transformed_features = []
+        X_train_transformed_num = pd.DataFrame([])
+        X_train_transformed_cat = pd.DataFrame([])
 
         if self.encode_cat:
             # Process categorical features based on cardinality

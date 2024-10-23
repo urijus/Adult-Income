@@ -4,14 +4,15 @@ import numpy as np
 import pandas as pd
 from abc import ABC, abstractmethod
 from pandas.api.types import is_numeric_dtype
+from scipy.stats import pointbiserialr, spearmanr
 from sklearn.model_selection import train_test_split
 
-from utils import TargetTransformer, FeatureTransformer
+from data.utils import TargetTransformer, FeatureTransformer
 
 
 ### Base Processor ###
 
-class BaseProcessor():
+class BaseProcessor:
     """
     A base class for loading, preprocessing, and transforming datasets.
     
@@ -53,6 +54,7 @@ class BaseProcessor():
         """
         self.file_path = file_path
         self.df = None
+        self.len_original_df = 0
         self.X_train = None
         self.X_test = None
         self.y_train = None
@@ -69,7 +71,7 @@ class BaseProcessor():
         """Handle missing values by dropping rows with missing data."""
         if self.df is not None:
             self.df = self.df.dropna()
-            print(f'Dropped {np.abs(int(len(self.df) - self.len_original_df ))} missing values.')
+            print(f'Dropped {np.abs(int(len(self.df) - self.len_original_df))} missing values.')
 
     def separate_features_target(self, target_column = None):
         """Separate features (X) and target (y)."""
@@ -103,9 +105,40 @@ class BaseProcessor():
         self.y = encoder.encode() #output
 
         label_encoder = TargetTransformer(self.y, 'LabelEncoder')
-        self.y_encoded = encoder.encode() #we'll use this to fit the TargetEncoder of categorical values, need to be 1D numerical array.
+        self.y_encoded = label_encoder.encode() #we'll use this to fit the TargetTransformer of categorical values, need to be 1D numerical array.
 
         print(f"Encoded the target feature y '{target_column}'.")
+
+    def feature_selection(self, feature_trh, train_dataset, test_dataset, target_column):
+        '''
+        This methods needs revision. It is not operational.
+        '''
+        df_cols = train_dataset.columns.to_list()
+        param = []
+        correlation = []
+        abs_correlation = []
+
+        combined_dataset = pd.concat([train_dataset, test_dataset], axis=0).reset_index(drop=True)
+
+        for c in df_cols:
+            if c != target_column:
+                if combined_dataset[c].nunique() <= 2:
+                    corr = spearmanr(combined_dataset[target_column], combined_dataset[c])[0]
+                else:
+                    corr = pointbiserialr(combined_dataset[target_column], combined_dataset[c])[0]
+                
+                param.append(c)
+                correlation.append(corr)
+                abs_correlation.append(abs(corr))
+        
+        param_df = pd.DataFrame({'corr': correlation, 'parameter': param, 'abs_corr': abs_correlation})
+        param_df = param_df.sort_values(by=['abs_corr'], ascending = False)
+        param_df = param_df.set_index('parameter')
+
+        best_features = list(param_df.index[0:feature_trh].values)
+        best_features.append(target_column)
+
+        return train_dataset[best_features], test_dataset[best_features]
 
     def initialize_transformer(self, num_scaler, cat_encoder, cardinality_threshold, encode_cat, scale_num):
         """Initialize the FeatureTransformer for feature scaling and encoding."""
@@ -141,7 +174,7 @@ class BaseProcessor():
 
     def concatenate_target(self, y, X, target_column):
         Y = self.to_dataframe(y)
-        
+      
         # Rename the columns to target_1, target_2, ..., etc.
         Y.columns = [f"{target_column}_{i+1}" for i in range(Y.shape[1])]
 
@@ -150,11 +183,10 @@ class BaseProcessor():
 
         return dataset
 
-
     def preprocess(
         self, dropna=True, target_column=None, encode_target=True, encode_type='LabelEncoder',
         test_size=0.3, random_state=42, num_scaler='MinMaxScaler', cat_encoder='TargetEncoder',
-        cardinality_threshold=20, encode_cat = False, scale_num = False
+        cardinality_threshold=20, encode_cat = False, scale_num = False, feature_trh = 5
     ):
         """
         Full data preprocessing pipeline:
@@ -174,7 +206,6 @@ class BaseProcessor():
         # Encode the target variable if required
         if encode_target:
             self.encode_target(target_column, encode_type)
-
         else:
             self.y_encoded = self.y
 
@@ -196,6 +227,12 @@ class BaseProcessor():
         train_dataset = self.concatenate_target(self.y_train, X_train, target_column = target_column)
         test_dataset = self.concatenate_target(self.y_test, X_test, target_column = target_column)
 
+        if feature_trh:
+            print(f'Apply feature selection down to {feature_trh} columns')
+            print("This methods needs revision. It is not operational.")
+            #self.feature_selection(feature_trh, train_dataset, test_dataset, 'income_1')
+            pass
+            
         return train_dataset, test_dataset
         
 
